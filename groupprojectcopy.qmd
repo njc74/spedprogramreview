@@ -78,9 +78,9 @@ A bigram chart was used for one survey item related to ineffective communication
 A bigram chart was selected as the best analysis method for this survey item as it most clearly demonstrated the relationship staff have with current district communication methods and most clearly identifies concerns being related to communications sent at the district-level. 
 
 ### Topic Modeling - Latent Dirichlet Allocation (LDA)
-Topic Modeling is a method for unsupervised classification of text analysis. Even when we do not know what should we analyze from text data, the strength of this model is finding some hidden groups of topics. In this paper, we first conducted the analysis of the question by question. Next, we employ topic modeling to find the most important predictors of negative and positive climate in the district across the survey data. For instance, some frequently used words such as "email" and "meeting" are important words but have multiple meanings, both negative and positive. Topic modeling can find the hidden meanings by annotating the document based on the predicted topic to find the most impactful predictors. 
+Topic Modeling is a method for unsupervised classification of text analysis. The strength of this model is finding "hidden meanings" among predicted groups of topics. After conducting TF-IDF analyses of each question, topic modeling was employed to find the most important predictors of negative and positive climate in the district across the survey data. Some frequently used words like "email" or "meeting" are important words but have multiple meanings, both negative and positive. Topic modeling can find the "hidden meanings" by annotating the document based on the predicted topic to find the most impactful linguistic predictors. 
 
-LDA is one method of topic modeling. LDA aims to find the topic of the document based on the words belonging to it. This method disregards grammar and other words.  
+LDA is just one method of topic modeling. LDA aims to find the topic(s) of a document based on the words belonging to it. The method disregards grammar and other words.  
 
 # Climate and Culture Facilitators 
 ## Considering your school, what factors do you believe are presently or would be facilitators of a positive climate and culture related to special education?

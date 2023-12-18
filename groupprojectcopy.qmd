@@ -1,0 +1,1128 @@
+---
+title: "Employing Text Analysis for a School District's Special Education Program Review"
+subtitle: "Data Science for Public Policy Final Project"
+author: "Nick Coukoulis"
+format: 
+  html:
+    self-contained: true
+    code-line-numbers: true
+    code-fold: true
+execute: 
+  warning: false
+urlcolor: blue
+editor_options: 
+  chunk_output_type: console
+---
+
+# Introduction
+A suburban school district just outside a large city on the West Coast wished to conduct a third-party, independent review of their special education program following several high-profile staff departures from the district office and receiving negative press of their special education staff feeling "abandoned" in local news articles. The purpose of the review was to examine special education practices impacting climate, staffing, and communication within the district. The review aimed to identify strengths and areas of need for district leadership to better understand and improve their current system. The review was conducted over a 7-month period between October 2022 and May 2023. 
+
+The review began by gathering information from extant data available at the district-level, reviewing websites, documents (e.g., school board policies and procedures, student services employee exit interview notes), and data (e.g., numbers of special education staff no longer working in the district by year). In addition to reviewing the extant data, a staff survey, ten interviews, and seven focus groups were conducted. 
+
+This analysis aims to identify strengths and areas of need for district leadership to better understand and improve their current system. In this analysis, we contextualize and present text analysis results based upon the open-ended survey responses and focus group/interview transcripts. We conclude with recommendations grounded in the results and in knowledge of best practices supported by research that are being implemented successfully in similar districts nationwide.
+
+```{r}
+library(tidyverse)
+library(tidytext)
+library(lubridate)
+library(SnowballC)
+library(igraph)
+library(ggraph)
+library(stopwords)
+library(dplyr)
+
+theme_set(theme_minimal())
+
+# load one-row-per-line data ----------------------------------------------
+surveydata <- read_csv("/Users/nicholascoukoulis/Documents/Georgetown/MPP/Spring2023/DataScience/assignments/project/Groupproject/individualresponses_survey_updated_5.1.23.csv")
+surveydata <- filter(surveydata, !is.na(text))
+
+#dropping consent & working years since we've cleaned data to just include these
+surveydata <- surveydata[-c(1:2)]
+```
+
+# Methods
+## Data Collection
+Seven one-hour virtual focus groups with district-level administrators, building administrators, certified support staff (e.g., related service providers, school psychologists), special education teachers, general education teachers, and non-certified support staff (e.g., transportation staff, paraeducators) were conducted. We spoke with 60 staff total, with an average focus group size of 9 members.
+
+Ten interviews were conducted that included current and former district staff serving in the district office. Roles interviewed included superintendent, assistant superintendent, itinerant services program manager, director of student support services, director of special education, manager of special education programs, director of psychology and counseling, deaf and hard of hearing program director, and president and uniserv representative of the teachers' union. 
+
+All staff in the district (school-level and district-level) were invited to complete a survey administered via SurveyMonkey that included 33 Likert-scale items aligned with the research questions guiding the review, seven open-ended response questions, and six multiple choice questions. Estimated response time for the survey was 15-20 minutes. 
+
+The district has a total of 3,023 employees. A total of 1205 staff (40% of all staff) consented to take the survey, indicated they had worked in the district during the 2021-22 school year, and shared their role. Of this total:
+
+* 417 (35%) were general education teachers;
+* 308 (26%) were non-certified support staff (including paraeducators);
+* 151 (13%) were related service providers, psychologists, or other certified support staff; 
+* 119 (10%) were special education teachers;
+* 28 (2.3%) were school administrators;
+* 18 (2%) were district administrators; 
+* 12 (1%) were transportation staff; and 
+* 152 (13%) identified as “other” 
+  + Individuals who selected “other” were asked to specify and responses included, but were not limited to, roles like custodian, music specialist, food service worker, substitute teacher, and ASL interpreter. Several certificated roles like ELL teacher, behavior and emotional support specialist, and certificated nurse selected “other” as well. The survey was open for two weeks in January 2023, from January 9 to January 24. 
+
+## Data Analysis
+
+### Term Frequency - Inverse Document Frequency (TF-IDF)
+A Term Frequency - Inverse Document Frequency (TF-IDF) analysis is used for almost all survey questions relating to climate and communication. "Term Frequency" (TF) measures the frequency of a word in a document. Because documents vary in length and longer documents are equally as important as shorter documents, normalization of the frequency value is required in the form of dividing the frequency by the total number of words in the document. 
+
+If a term doesn't exist in a given document, the TF score would be 0. Likewise, if a document is comprised only of the same one term, the TF score would be 1. All TF scores fall within a range between 0 and 1. 
+
+"Inverse Document Frequency" (IDF) measures the informativeness of any term, *t*. An IDF value will be very low for "stop words," or common words like "is" or "a" because they aren't very informative on their own. In addition to those general "stop words", we set domain-specific stop words such as the words which included in the survey questions are used a lot because people tend to repeat again in their answers in order to increase the accuracy.
+
+Thus, the TF-IDF score is a measure of originality of term *t* calculated by comparing the number of times term *t* appears in a document with the number of documents term *t* appears in. A higher TF-IDF score indicates the importance and relevance of a term. Lower importance terms will have scores closer to 0. TF-IDF was selected for analysis for a quick summary of priorities/keywords across survey items and to easily compare and contrast priorities and concerns between roles. At the same time, it was utilized to categorize words into positive and negative meanings for setting the topics in topic modeling.  
+
+### Bigrams
+A bigram chart was used for one survey item related to ineffective communication. A "bigram" is an association between two individual terms. The bigram chart employs a frequency count of terms and is an effective way to visualize relationships between terms. 
+
+A bigram chart was selected as the best analysis method for this survey item as it most clearly demonstrated the relationship staff have with current district communication methods and most clearly identifies concerns being related to communications sent at the district-level. 
+
+### Topic Modeling - Latent Dirichlet Allocation (LDA)
+Topic Modeling is a method for unsupervised classification of text analysis. Even when we do not know what should we analyze from text data, the strength of this model is finding some hidden groups of topics. In this paper, we first conducted the analysis of the question by question. Next, we employ topic modeling to find the most important predictors of negative and positive climate in the district across the survey data. For instance, some frequently used words such as "email" and "meeting" are important words but have multiple meanings, both negative and positive. Topic modeling can find the hidden meanings by annotating the document based on the predicted topic to find the most impactful predictors. 
+
+LDA is one method of topic modeling. LDA aims to find the topic of the document based on the words belonging to it. This method disregards grammar and other words.  
+
+# Climate and Culture Facilitators 
+## Considering your school, what factors do you believe are presently or would be facilitators of a positive climate and culture related to special education?
+A single-term TF-IDF approach was applied here to determine the most frequent, unique terms related to climate and culture facilitators. 
+```{r, echo = FALSE,results = 'hide', fig.keep = 'all', fig.align="center", echo = FALSE,fig.height = 9}
+#climate culture facilitators
+climate_facilitators <- surveydata[c(1:4, 7)]
+
+climate_facilitators_1 <- 
+  climate_facilitators %>%
+  pivot_longer(climate_facilitators)
+
+# tokenize the text -------------------------------------------------------
+tidy_climate_facilitators <- climate_facilitators_1 %>%
+  unnest_tokens(
+    output = word, 
+    input = value
+  )
+
+#stopwords
+tidy_climate_facilitators
+
+# create domain-specific stop words
+domain_stop_words <- tribble(
+  ~word, 
+  "special",
+  "education",
+  "ed",
+  "sped",
+  "I",
+  "classroom",
+  "stuff",
+  "mat",
+  "hoyer",
+  "hold",
+  "environment",
+  "siblings",
+  "depressing",
+  "differences",
+  "recommendations",
+  "served",
+  "gen"
+) %>%
+  mutate(lexicon = "custom")
+
+stop_words <- bind_rows(
+  stop_words,
+  domain_stop_words
+)
+
+# remove stop words with anti_join() and the stop_words tibble
+tidy_climate_facilitators <- tidy_climate_facilitators %>%
+  anti_join(stop_words, by = "word") 
+
+# remove words that are entirely numbers
+tidy_climate_facilitators <- tidy_climate_facilitators %>%
+  filter(!str_detect(word, pattern = "^\\d")) 
+
+# stem words with wordStem()
+tidy_climate_facilitators <- tidy_climate_facilitators %>%
+  mutate(stem = wordStem(word))
+
+# compare the top words and top stems
+# do you notice any big changes?
+tidy_climate_facilitators %>%
+  count(word, sort = TRUE) %>% 
+  print(n = 20)
+
+tidy_climate_facilitators %>%
+  count(stem, sort = TRUE) %>% 
+  print(n = 20)
+
+tidy_climate_facilitators %>%
+  count(primaryrole, sort = TRUE) %>%
+  print(n = 20)
+
+tidy_climate_facilitators <- tidy_climate_facilitators %>%
+  drop_na(word) %>%
+  drop_na(stem) %>%
+  drop_na(primaryrole)
+
+tf_idf <- tidy_climate_facilitators %>%
+  count(primaryrole, word, sort = TRUE) %>%
+  bind_tf_idf(term = word, document = primaryrole, n = n) %>%
+  arrange(desc(tf_idf))
+
+tf_idf %>%
+  group_by(primaryrole) %>%
+  top_n(7, tf_idf) %>%
+  mutate(word = reorder(word, tf_idf)) %>%
+  ggplot(aes(tf_idf, word, fill = primaryrole)) +
+  geom_col() +
+  facet_wrap(~primaryrole, scales = "free", ncol = 2) +
+  labs (x = "TF-IDF Score" , y = "Term") +
+  theme_minimal()+
+  guides(fill = "none")
+```
+
+# Climate Barriers
+## Considering your school, what factors, if any, do you believe are barriers that inhibit a positive climate and culture related to special education?
+A bigram TF-IDF approach was applied to determine the most frequent, unique pairs of terms related to climate and culture barriers.  
+```{r, echo = FALSE,results = 'hide', fig.keep = 'all', fig.align="center", fig.height = 13, fig.width = 10}
+#climate barriers
+climate_barriers <- surveydata[c(1:4, 8)]
+
+climate_barriers_1 <- 
+  climate_barriers  %>%
+  pivot_longer(climate_barriers)
+
+
+# tokenize the text -------------------------------------------------------
+tidy_climate_barriers <- climate_barriers_1 %>%
+  unnest_tokens(
+    output = bigram, 
+    input = value,
+    token = "ngrams",
+    n = 2
+    )%>%
+  filter(!is.na(bigram))
+
+tidy_climate_barriers <- tidy_climate_barriers %>%
+  separate(bigram, c("word1", "word2"), 
+           remove = FALSE)
+
+# create domain-specific stop words
+domain_stop_words <- tribble(
+  ~word, 
+  "staff",
+  "special",
+  "education",
+  "ed",
+  "sped",
+  "I",
+  "1",
+  "3",
+  "4",
+  "major",
+  "barrier",
+  "don't",
+  "1", "3",
+  "3", "1",
+  "1", "4",
+  "don't",
+  "incredibly",
+  "frustrating",
+  "community",
+  "students"
+) %>%
+  mutate(lexicon = "custom")
+
+# remove stop words with anti_join() and the stop_words tibble
+stop_words <- bind_rows(
+  stop_words,
+  domain_stop_words
+)
+
+tidy_climate_barriers <- tidy_climate_barriers %>%
+  anti_join(stop_words, by = c("word1" = "word"))
+tidy_climate_barriers <- tidy_climate_barriers %>%
+  anti_join(stop_words, by = c("word2" = "word"))
+
+#tf-idf
+tf_idf <- tidy_climate_barriers %>%
+  count(primaryrole, bigram, sort = TRUE) %>%
+  bind_tf_idf(term = bigram, document = primaryrole, n = n) %>%
+  arrange(desc(tf_idf))
+
+#plotting tf-idf
+tf_idf %>%
+  group_by(primaryrole) %>%
+  top_n(5, tf_idf) %>%
+  mutate(bigram = reorder(bigram, tf_idf)) %>%
+  ggplot(aes(tf_idf, bigram, fill = primaryrole)) +
+  geom_col() +
+  facet_wrap(~primaryrole, scales = "free", ncol = 2) +
+  labs (x = "TF-IDF Score" , y = "Bigram Terms") +
+  theme_minimal()+
+  guides(fill = "none")
+
+```
+
+# Effective Communication
+## Considering both district- and school-level communications, which practices do you perceive as effective?
+A bigram TF-IDF approach was applied to determine the most frequent, unique pairs of terms related to effective communication.  
+
+```{r, echo = FALSE,results = 'hide', fig.keep = 'all', fig.align="center", fig.height = 9, fig.width = 8}
+# effective communication
+effective_communication <- surveydata[c(1:4, 9)]
+
+effective_communication_1 <- 
+  effective_communication %>%
+  pivot_longer(effective_communication)
+
+# tokenize the text -------------------------------------------------------
+tidy_effective_communication <- effective_communication_1 %>%
+  unnest_tokens(
+    output = bigram, 
+    input = value,
+    token = "ngrams",
+    n = 2
+    )%>%
+  filter(!is.na(bigram))
+
+tidy_effective_communication <- tidy_effective_communication %>%
+  separate(bigram, c("word1", "word2"), 
+           remove = FALSE)
+
+# create domain-specific stop words
+domain_stop_words <- tribble(
+  ~word, 
+  "staff",
+  "special",
+  "education",
+  "ed",
+  "sped",
+  "I",
+  "1",
+  "3",
+  "4",
+  "major",
+  "barrier",
+  "don't",
+  "woodway",
+  "campus", 
+  "learning",
+  "support",
+  "news",
+  "effective",
+  "program"
+) %>%
+  mutate(lexicon = "custom")
+
+# remove stop words with anti_join() and the stop_words tibble
+stop_words <- bind_rows(
+  stop_words,
+  domain_stop_words
+)
+
+tidy_effective_communication <- tidy_effective_communication %>%
+  anti_join(stop_words, by = c("word1" = "word"))
+tidy_effective_communication <- tidy_effective_communication %>%
+  anti_join(stop_words, by = c("word2" = "word"))
+
+#tf-idf
+tf_idf <- tidy_effective_communication %>%
+  count(primaryrole, bigram, sort = TRUE) %>%
+  bind_tf_idf(term = bigram, document = primaryrole, n = n) %>%
+  arrange(desc(tf_idf))
+
+# plotting tf-idf
+tf_idf %>%
+  group_by(primaryrole) %>%
+  top_n(5, tf_idf) %>%
+  mutate(bigram = reorder(bigram, tf_idf)) %>%
+  ggplot(aes(tf_idf, bigram, fill = primaryrole)) +
+  geom_col() +
+  facet_wrap(~primaryrole, scales = "free", ncol = 2) +
+  labs (x = "TF-IDF Score" , y = "Bigram Terms") +
+  theme_minimal()+
+  guides(fill = "none")
+```
+
+# Ineffective Communication
+## Considering both district- and school-level communications, which practices do you perceive as ineffective or inefficient?
+A straightforward frequency count of bigrams was applied to clearly display relationships between terms and responsible parties/methods for ineffective communication. 
+
+```{r, echo = FALSE,results = 'hide', fig.keep = 'all', fig.align="center", fig.height = 12.5, fig.width = 20}
+
+# Ineffective Communication
+ineffective_communication <- surveydata[c(1:4, 10)]
+
+ineffective_communication_1 <- 
+  ineffective_communication %>%
+  pivot_longer(ineffective_communication)
+
+# tokenize the text -------------------------------------------------------
+tidy_ineffective_communication <- ineffective_communication_1 %>%
+  unnest_tokens(
+    output = bigram, 
+    input = value,
+    token = "ngrams",
+    n = 2
+    )%>%
+  filter(!is.na(bigram))
+
+tidy_ineffective_communication <- tidy_ineffective_communication %>%
+  separate(bigram, c("word1", "word2"), 
+           remove = FALSE)
+
+# create domain-specific stop words
+domain_stop_words <- tribble(
+  ~word, 
+  "staff",
+  "special",
+  "education",
+  "ed",
+  "sped",
+  "I",
+  "1",
+  "3",
+  "4",
+  "major",
+  "barrier",
+  "don't",
+  "aren't",
+  "level"
+) %>%
+  mutate(lexicon = "custom")
+
+# remove stop words with anti_join() and the stop_words tibble
+stop_words <- bind_rows(
+  stop_words,
+  domain_stop_words
+)
+
+tidy_ineffective_communication <- tidy_ineffective_communication %>%
+  anti_join(stop_words, by = c("word1" = "word"))
+tidy_ineffective_communication <- tidy_ineffective_communication %>%
+  anti_join(stop_words, by = c("word2" = "word"))
+
+bigram_3 <- 
+  tidy_ineffective_communication %>%
+  count(bigram, sort = TRUE) %>% 
+  filter(n > 3)
+
+# plot the bigrams that exist more than 3 times
+bigram_graph <- bigram_3 %>%
+  graph_from_data_frame()
+
+# plot the relationships (you may want to make the plot window bigger)
+set.seed(2017)
+ggraph(bigram_graph, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point() +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1)
+
+```
+
+# Communication Recommendations
+## What recommendations do you have for improving communication practices in Edmonds Public Schools?
+A bigram TF-IDF approach was applied to determine the most frequent, unique pairs of terms related to communication recommendations.  
+
+```{r, echo = FALSE,results = 'hide', fig.keep = 'all', fig.align="center", fig.height = 9, fig.width = 8}
+# Communication Recommendation
+
+communication_recommendation <- surveydata[c(1:4, 11)] 
+communication_recommendation <- communication_recommendation %>%
+  mutate_all(as.character)
+
+communication_recommendation_1 <- communication_recommendation %>%
+  pivot_longer(communication_recommendations)
+
+# tokenize the text -------------------------------------------------------
+tidy_communication_rec <- communication_recommendation_1 %>%
+  unnest_tokens(
+    output = bigram, 
+    input = value,
+    token = "ngrams",
+    n = 2
+  )%>%
+  filter(!is.na(bigram))
+
+tidy_communication_rec <- tidy_communication_rec %>%
+  separate(bigram, c("word1", "word2"), 
+           remove = FALSE)
+
+# create domain-specific stop words
+domain_stop_words <- tribble(
+  ~word, 
+  "staff",
+  "special",
+  "education",
+  "ed",
+  "sped",
+  "I",
+  "1",
+  "3",
+  "4",
+  "major",
+  "barrier",
+  "don't",
+  "aren't",
+  "48",
+  "21 22",
+  "20 21",
+  "haha",
+  "24",
+  "etnier",
+  "woodway",
+  "pre",
+  "post",
+  "lap",
+  "title",
+  "wide",
+  "type",
+  "drivers",
+  "people",
+  "student",
+  "crew"
+) %>%
+  mutate(lexicon = "custom")
+
+# remove stop words with anti_join() and the stop_words tibble
+stop_words <- bind_rows(
+  stop_words,
+  domain_stop_words
+)
+
+tidy_communication_rec <- tidy_communication_rec %>%
+  anti_join(stop_words, by = c("word1" = "word"))
+tidy_communication_rec <- tidy_communication_rec %>%
+  anti_join(stop_words, by = c("word2" = "word"))
+
+tf_idf <- tidy_communication_rec %>%
+  count(primaryrole, bigram, sort = TRUE) %>%
+  bind_tf_idf(term = bigram, document = primaryrole, n = n) %>%
+  arrange(desc(tf_idf))
+
+tf_idf %>%
+  group_by(primaryrole) %>%
+  top_n(5, tf_idf) %>%
+  mutate(bigram = reorder(bigram, tf_idf)) %>%
+  ggplot(aes(tf_idf, bigram, fill = primaryrole)) +
+  geom_col() +
+  facet_wrap(~primaryrole, scales = "free", ncol = 2) +
+  labs (x = "TF-IDF Score" , y = "Bigram Terms") +
+  theme_minimal()+
+  guides(fill = "none")
+```
+
+# Topic Modeling - Latent Dirichlet Allocation (LDA)
+## Make Topics with TF-IDF Analysis
+Firstly, we set the two topics which represent negative and positive climate. TF-IDF was conducted with the whole survey data to boil down the negative and positive words by labeling with two kinds of questions: negative answers of "climate barriers" and "ineffective communications" questions, and positive answers about ”effective communications” and ”communication recommendations" questions.
+
+```{r, echo = FALSE,results = 'hide', fig.keep = 'all', fig.align="center", fig.height = 9, fig.width = 8}
+# make one data frame which includes all 4 survey questions
+climate_barriers <- surveydata[c(8)]
+effective_communication <- surveydata[c(9)]
+ineffective_communication <- surveydata[c(10)]
+communication_recommendation <- surveydata[c(11)] 
+
+climate_barriers <- climate_barriers %>%
+  mutate(question = "climate_barriers")
+colnames(climate_barriers) <- c("text", "question")
+  
+effective_communication <- effective_communication %>%
+  mutate(question = "effective_communication")
+colnames(effective_communication) <- c("text", "question")
+
+ineffective_communication <- ineffective_communication %>%
+  mutate(question = "ineffective_communication")
+colnames(ineffective_communication) <- c("text", "question")
+
+communication_recommendation <- communication_recommendation %>%
+  mutate(question = "communication_recommendation")
+colnames(communication_recommendation) <- c("text", "question")
+
+
+allquestions <- rbind.data.frame(
+  climate_barriers, 
+  effective_communication, 
+  ineffective_communication, 
+  communication_recommendation
+  )
+allquestions <- allquestions %>%
+  filter(!is.na(text))
+
+# try two words TF-IDF so that we can find the unique words for each questions
+
+# tokenize the text 
+tidy_allquestions <- allquestions %>%
+  unnest_tokens(
+    output = word, 
+    input = text
+  )
+
+# create domain-specific stop words
+domain_stop_words <- tribble(
+  ~word, 
+  "staff",
+  "special",
+  "education",
+  "ed",
+  "sped",
+  "I",
+  "district",
+  "school",
+  "students",
+  "student",
+  "level",
+  "teachers",
+  "teacher",
+  "aren't",
+  "don't",
+  "doesn't",
+  "didn't"
+) %>%
+  mutate(lexicon = "custom")
+
+# remove stop words with anti_join() and the stop_words tibble
+stop_words <- bind_rows(
+  stop_words,
+  domain_stop_words
+)
+
+tidy_allquestions_2 <- allquestions %>%
+  unnest_tokens(
+    output = bigram, 
+    input = text,
+    token = "ngrams",
+    n = 2
+  )%>%
+    filter(!is.na(bigram))
+
+tidy_allquestions_2 <- tidy_allquestions_2 %>%
+  separate(bigram, c("word1", "word2"), 
+           remove = FALSE)
+
+# remove stop words with anti_join() and the stop_words tibble
+tidy_allquestions_2 <- tidy_allquestions_2 %>%
+  anti_join(stop_words, by = c("word1" = "word"))
+tidy_allquestions_2 <- tidy_allquestions_2 %>%
+  anti_join(stop_words, by = c("word2" = "word"))
+
+# remove words that are entirely numbers
+tidy_allquestions_2 <- tidy_allquestions_2 %>%
+  filter(!grepl("\\d{1,}", word1)) %>%
+  filter(!grepl("\\d{1,}", word2))
+
+# stem words with wordStem()
+tidy_allquestions_2 <- tidy_allquestions_2 %>%
+  mutate(stem = wordStem(word1))%>%
+  mutate(stem = wordStem(word2))
+
+# compare the top words and top stems
+tidy_allquestions_2 %>%
+  count(word1, sort = TRUE) %>% 
+  print(n = 20)
+
+tidy_allquestions_2 %>%
+  count(word2, sort = TRUE) %>% 
+  print(n = 20)
+
+tidy_allquestions_2 %>%
+  count(stem, sort = TRUE) %>% 
+  print(n = 20)
+
+tidy_allquestions_2 %>%
+  count(question, sort = TRUE) %>%
+  print(n = 20)
+
+tidy_allquestions_2 <- tidy_allquestions_2 %>%
+  drop_na(word1) %>%
+  drop_na(word2) %>%
+  drop_na(stem) %>%
+  drop_na(question)
+
+# tf-idf
+tf_idf <- tidy_allquestions_2 %>%
+  count(question, bigram, sort = TRUE) %>%
+  bind_tf_idf(term = bigram, document = question, n = n) %>%
+  arrange(desc(tf_idf))
+
+tf_idf %>%
+  group_by(question) %>%
+  top_n(7, tf_idf) %>%
+  mutate(bigram = reorder(bigram, tf_idf)) %>%
+  ggplot(aes(tf_idf, bigram, fill = question)) +
+  geom_col() +
+  facet_wrap(~question, scales = "free", ncol = 2) +
+  labs (x = "TF-IDF Score" , y = "Term") +
+  theme_minimal()+
+  guides(fill = "none")
+
+# pick up from the TF-IDF and separate words into two topics: words indicating dissatisfaction and satisfaction.
+
+# dissatisfaction (= ineffective communicatoin, climate barrier)
+topic_dis <- c("inconsistent",
+               "ineffective",
+               "phone",
+               "calls",
+               "flow",
+               "chart",
+               "communication",
+               "weekly",
+               "memo",
+               "upper",
+               "admin",
+               "top",
+               "tier",
+               "structure",
+               "hierarchy",
+               "solving",
+               "process",
+               "short",
+               "returning",
+               "receiving",
+               "message",
+               "quietly",
+               "divided",
+               "principal",
+               "micro",
+               "pay",
+               "attention",
+               "minute",
+               "manage",
+               "mass",
+               "email",
+               "lack",
+               "incorrect",
+               "information",
+               "imbedded",
+               "ignoring",
+               "devalued",
+               "extra",
+               "left",
+               "dual",
+               "language",
+               "district",
+               "expectation",
+               "constantly",
+               "changing",
+               "cold",
+               "lunch",
+               "admin",
+               "don't",
+               "toxic",
+               "harmed",
+               "safety",
+               "wage",
+               "pay",
+               "barrier"
+)
+
+# satisfaction (= effective communicatoin)
+topic_sat <- c("timely",
+               "time",
+               "leadership",
+               "effective",
+               "positive",
+               "communication",
+               "parent",
+               "weekly",
+               "email",
+               "updates",
+               "principal",
+               "send",
+               "newsleter",
+               "team",
+               "meet",
+               "meeting",
+               "accessible",
+               "consistent",
+               "alike",
+               "kids",
+               "clarity",
+               "answered",
+               "pd",
+               "professional",
+               "development",
+               "standard",
+               "process"
+)
+
+topics <- list(
+  topic_dis,
+  topic_sat
+)
+
+```
+
+## Calcurate Probabilities
+
+```{r, echo = FALSE,results = 'hide', fig.keep = 'all', fig.align="center", fig.height = 9, fig.width = 8}
+set.seed(42)
+document_length_i <- rpois(n = 1, lambda = 10)
+document_length_i
+
+library(MCMCpack)
+
+topic_distribution_i <- MCMCpack::rdirichlet(n = 1, alpha = c(0.5, 0.5)) %>%
+  as.numeric()
+topic_distribution_i
+
+topic_j <- sample(
+  x = 1:2,
+  size = document_length_i,
+  prob = topic_distribution_i,
+  replace = TRUE
+)
+topic_j
+
+document_i <- map_chr(
+  .x = topic_j,
+  .f = ~sample(x = topics[[.x]], size = 1)
+)
+document_i
+
+library(tidyverse)
+library(tidytext)
+library(SnowballC)
+library(topicmodels)
+
+# make one dataframe which includes all 4 suevey questions and primary role
+climate_barriers <- surveydata[c(1,8)]
+effective_communication <- surveydata[c(1, 9)]
+ineffective_communication <- surveydata[c(1, 10)]
+communication_recommendation <- surveydata[c(1, 11)] 
+
+climate_barriers <- climate_barriers %>%
+  mutate(question = "climate_barriers")
+colnames(climate_barriers) <- c("primaryrole", "text", "question")
+
+effective_communication <- effective_communication %>%
+  mutate(question = "effective_communication")
+colnames(effective_communication) <- c("primaryrole","text", "question")
+
+ineffective_communication <- ineffective_communication %>%
+  mutate(question = "ineffective_communication")
+colnames(ineffective_communication) <- c("primaryrole","text", "question")
+
+communication_recommendation <- communication_recommendation %>%
+  mutate(question = "communication_recommendation")
+colnames(communication_recommendation) <- c("primaryrole","text", "question")
+
+
+allquestions <- rbind.data.frame(
+  climate_barriers, 
+  effective_communication, 
+  ineffective_communication, 
+  communication_recommendation
+)
+allquestions <- allquestions %>%
+  filter(!is.na(text))%>%
+  mutate(row_num = row_number())
+
+# tokenize the text 
+tidy_allquestions <- allquestions %>%
+  unnest_tokens(
+    output = word, 
+    input = text
+  )
+
+tidy_allquestions<- tidy_allquestions %>%
+  anti_join(stop_words, by = "word") 
+
+# remove words that are entirely numbers
+tidy_allquestions <- tidy_allquestions %>%
+  filter(!grepl("\\d{2,}", word)) 
+
+# stem words with wordStem()
+tidy_allquestions <- tidy_allquestions %>%
+  mutate(stem = wordStem(word))
+
+tidy_allquestions_count <- tidy_allquestions %>%
+  count(question, stem)
+
+eos_dtm <- tidy_allquestions_count %>%
+  cast_dtm(document = question, term = stem, value = n)
+
+eos_lda <- eos_dtm %>%
+  LDA(k = 22, control = list(seed = 20220417))
+
+# Word topic probabilities
+lda_beta <- tidy(eos_lda, matrix = "beta")
+top_beta <- lda_beta %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 12) %>%
+  ungroup() %>%
+  arrange(desc(beta))
+top_beta
+
+random_topics <- sample(1:22, size = 6)
+
+top_beta %>%
+  filter(topic %in% random_topics) %>%
+  mutate(term = reorder(term, beta)) %>%
+  ggplot(aes(x = beta, y = term)) +
+  geom_col() +
+  facet_wrap(~ topic, scales = "free")
+
+# Document-topic probabilities
+lda_gamma <- tidy(eos_lda, matrix = "gamma")
+top_gamma <- lda_gamma %>%
+  group_by(topic) %>%
+  slice_max(gamma, n = 12) %>%
+  ungroup() %>%
+  arrange(desc(gamma))
+top_gamma
+```
+
+```{r, echo = FALSE,results = 'hide', fig.keep = 'all'}
+# Recipe
+allquestions <- allquestions %>%
+  group_by(row_num) %>%
+  nest(text = text) %>%
+  # paste individual lines into one row per document
+  mutate(text = map_chr(.x = text, ~paste(.x[[1]], collapse = " "))) %>%
+  ungroup() %>%
+  # remove white spaces
+  mutate(text = str_squish(str_to_lower(text)))
+allquestions
+
+library(textrecipes)
+recipe( ~ text, data = allquestions) %>%
+  # tokenize the text
+  step_tokenize(text) %>%
+  # remove stop works
+  step_stopwords(text) %>%
+  # stem words
+  step_stem(text) %>%
+  # remove infrequent tokens
+  step_tokenfilter(text, max_tokens = 10) %>%
+  # perform TF-IDF
+  step_tfidf(text) %>%
+  prep() %>%
+  bake(new_data = NULL)
+
+```
+
+## Finding the best model
+
+In the coefficients analysis, the word "lack", "barrier", and "inconsistent" have the biggest impact for predicting the negative climate in the school workplace. Regarding the predictors for positive climate, "meeting" has meanings both negative and positive, yet it is more likely to be used in the positive context from this analysis. "Improve" sounds like a good predictor of positive climate; however, it only has a relatively small impact on positive climate.
+
+For variable importance, "lack" is the best word in our survey data predicting negative climate. Term importance significantly decreases after "lack." "Enough" and "student" round out the top three, and are also predictors for negative climate.
+
+As a whole, negative climate predictors received higher scores than predictors for positive climate. These scores indicate negative climate factors are less varied in school workplaces and could be easier to identify and eliminate than goals around creating positive climate.
+
+The Random Forest model is a better model compared to Lasso model in terms of RSME.
+
+```{r, echo = FALSE,results = 'hide', fig.keep = 'all', fig.align="center", fig.height = 9, fig.width = 8}
+# pre-process data
+eos <- allquestions %>%
+  filter(!is.na(text))
+
+eos <- eos %>%
+  mutate(text = str_remove_all(text, "\\d")) %>%
+  mutate(text = str_remove_all(text, "``''")) %>%
+  mutate(text = str_squish(text))
+
+# combine rows into one row per document
+eos <- eos %>%
+  group_by(row_num) %>%
+  nest(text = text) %>%
+  mutate(text = map_chr(.x = text, ~paste(.x[[1]], collapse = " "))) %>%
+  ungroup()
+# label the party of each executive order
+negative <- c("climate_barriers", "ineffective_communication")
+eos_modeling <- eos %>%
+  mutate(
+    climate = if_else(
+      condition = question %in% negative,
+      true = "neg",
+      false = "pos"
+    )
+  )
+
+# LASSO regression
+library(tidymodels)
+library(textrecipes)
+library(vip)
+# create a training/testing split
+set.seed(43)
+eos_split <- initial_split(eos_modeling, strata = climate)
+eos_train <- training(eos_split)
+eos_test <- testing(eos_split)
+
+# set up cross validation
+set.seed(34)
+eos_folds <- vfold_cv(eos_train, strata = climate)
+
+# create a recipe that will be used by both models.
+eos_rec <-
+  recipe(climate ~ text, data = eos_train) %>%
+  step_tokenize(text) %>%
+  step_stopwords(text) %>%
+  step_stem(text) %>%
+  # ad hoc testing indicates that increasing max tokens makes a difference
+  step_tokenfilter(text, max_tokens = 1000) %>%
+  step_tfidf(text)
+
+# Create a workflow.
+lasso_mod <-
+  logistic_reg(penalty = tune(), mixture = 1) %>%
+  set_mode("classification") %>%
+  set_engine("glmnet")
+
+lasso_wf <- workflow() %>%
+  add_recipe(eos_rec) %>%
+  add_model(lasso_mod)
+
+# Create a grid for hyperparameter tuning and fit the models.
+lasso_grid <- grid_regular(penalty(range = c(-5, 0)), levels = 10)
+lasso_cv <-
+  tune_grid(
+    lasso_wf,
+    eos_folds,
+    grid = lasso_grid
+  )
+
+# Unpack the estimated models.
+lasso_cv %>%
+  collect_metrics(summarize = FALSE)%>%
+  summarize(avg_rmse = mean(.estimate))
+
+autoplot(lasso_cv)
+
+lasso_cv %>%
+  select_best("roc_auc")
+
+# Fit the best model on all of the training data and look at the coefficients.
+lasso_wf <- finalize_workflow(x = lasso_wf, parameters = select_best(lasso_cv, "roc_auc"))
+lasso_fit <- last_fit(lasso_wf, split = eos_split)
+lasso_fit %>%
+  extract_fit_parsnip() %>%
+  tidy() %>%
+  arrange(desc(abs(estimate))) %>%
+  print(n = 20)
+
+# Random Forest
+# Create a workflow.
+rf_mod <-
+  rand_forest(mtry = tune(), trees = 100, min_n = tune()) %>%
+  set_mode("classification") %>%
+  set_engine("ranger", importance = "impurity")
+rf_wf <- workflow() %>%
+  add_recipe(eos_rec) %>%
+  add_model(rf_mod)
+
+library(ranger)
+# Create a grid for hyperparameter tuning and fit the models.
+rf_grid <- grid_regular(
+  mtry(range = c(10, 100)),
+  min_n(range = c(2, 8)),
+  levels = 5
+)
+rf_cv <-
+  tune_grid(
+    rf_wf,
+    eos_folds,
+    grid = rf_grid
+  )
+# Unpack the estimated models.
+rf_cv %>%
+  collect_metrics()
+
+autoplot(rf_cv)
+
+rf_cv %>%
+  select_best("roc_auc")
+
+# Fit the best model on all of the training data and look at variable importance.
+rf_wf <- finalize_workflow(x = rf_wf, parameters = select_best(rf_cv, "roc_auc"))
+rf_fit <- last_fit(rf_wf, split = eos_split)
+```
+
+```{r}
+rf_fit %>%
+  extract_fit_parsnip() %>%
+  vip(num_features = 20)
+```
+
+```{r, echo = FALSE,results = 'hide', fig.keep = 'all', fig.align="center", fig.height = 9, fig.width = 8}
+# Out of sample error rate
+collect_metrics(rf_fit)
+```
+
+```{r}
+# Unpack the estimated models.
+lasso_cv %>%
+  collect_metrics(summarize = FALSE)%>%
+  summarize(avg_rmse = mean(.estimate))
+
+rf_fit %>%
+  collect_metrics(summarize = FALSE)%>%
+  summarize(avg_rmse = mean(.estimate))
+```
+
+# Summary of Results: Strengths and Recommendations
+## Strengths
+A review of the data revealed the following strengths:
+
+* Strength 1: Staff remain focused on best serving students and families. 
+
+  + We see "kids" appear under Climate and Culture Facilitators and parent communication app "parent square" appear under Effective Communication.
+
+* Strength 2: Generally effective communication among staff and administrators at the building-level.
+
+  + Under Effective Communication, "building admin," "school level," or other similar terms are quite frequent. 
+
+* Strength 3: At all levels, staff acknowledge the district possesses a strong, qualified group of educators. 
+
+* Strength 4: Recognition the district was and is a well-regarded school district families locate to so their children can receive a high-quality education and special education services. 
+
+  + The 2020-21 and 2021-22 school years were particularly challenging with the COVID-19 pandemic, but were challenging for the district in other ways with changes in leadership (those years appear as consistent reference points throughout the text analysis). Given the recency of these changes and new practices not yet becoming entrenched, there is still time for leadership to course-correct and steer the district back to being a place students, families, and staff wish to be part of.  
+
+## Recommendations
+A review of the data, including the text analysis review, strongly supports implementation of the following recommendations: 
+
+* Recommendation 1: Establish a cross-district advisory committee for special education to address priority concerns.
+
+  + Establishing a cross-district advisory committee for special education is a proactive and inclusive approach to address priority concerns and improve the educational experiences of students with special needs. This committee would bring together key stakeholders from across the district, including educators, administrators, parents, community members, and experts in the field of special education. By fostering collaboration and shared decision-making, the committee should aim to identify, discuss, and develop strategies to address the specific challenges faced by students with disabilities.
+
+  + The committee's primary purpose is to create a platform for open dialogue, information sharing, and problem-solving regarding special education issues. By convening regular meetings, members can discuss and analyze the priority concerns affecting students with special needs, such as curriculum adaptations, teacher training, inclusive practices, resource allocation, and parental involvement.
+
+* Recommendation 2: Create a dedicated special education director position whose sole responsibility is to oversee special education.
+
+  + Creating a dedicated special education director position whose sole responsibility is to oversee special education is an important step in ensuring that students with special needs receive the support and resources they require. Leadership in this capacity is currently highly desired and this position would play a crucial role in managing and improving special education programs within the district, addressing the unique needs of students with disabilities, and advocating for their rights.
+  
+  + Many questions from staff (see recommendation 3) go unanswered by district administrators because they do not have the answers to questions and cannot get in touch with the assistant superintendent currently tasked with answering them. This director position would act as an intermediary to answer staff questions immediately.   
+
+* Recommendation 3: Develop plan to implement relationship building strategies in addition to communication.
+
+  + Developing a plan to implement relationship building strategies in addition to communication is essential for fostering positive connections and strengthening bonds within any personal or professional interaction within the district. While effective communication is crucial, it is equally important to engage in activities and strategies that go beyond mere information exchange. 
+
+* Recommendation 4: Set expectations for administrative visits to classrooms and responding to emails and phone calls. Ensure there are enough of them to meet those expectations. 
+
+  + Expectations need to be set for district administrators to visit classrooms, respond to emails and phone calls (in a timely way), and meet the expectations of staff and administrators in schools. Across roles, many staff cite a lack of responsiveness to their phone calls and emails as barriers. 
+
+* Recommendation 5: Immediately reinstitute job alike meetings.
+
+  + "Immediately reinstituting job alike meetings" refers to the practice of organizing meetings or gatherings that bring together individuals who hold similar positions or work in similar roles within the district. These meetings are aimed at facilitating collaboration, knowledge-sharing, and professional development among employees who share common job responsibilities or face similar challenges.
+  
+  + Evident from the text analysis (see the Effective Communication and Communication Recommendations sections) is staff members' attachment to these meetings and the value they see in them. Emails and robo calls have limited effectiveness and aren't well-liked, as seen in the Ineffective Communication section.  
+
+* Recommendation 6: Review FTE allocated to the teaching program vs. itinerant services to determine      appropriate staffing and areas that can flex.
+
+  + In the Climate and Culture Facilitators section, we see many staff feel overwhelmed by their job responsibilities and discuss related terms to staffing like "substitute" teachers and various staff roles. "Time" is a recurring facilitator identified across roles. So is "pay."  
+  
+* Recommendation 7: A culture shift is required.
+
+  + There is currently a pervasive "us versus them" mentality prevailing at all staff levels in the district. District admins are structured in such a way that teaching and support staff are pitted against one another in competition for resources; school staff blame district staff for challenges faced in their roles; school staff feel siloed from one another and only communicate with others in their departments (a recurring request is more planning time with other roles, particularly on behalf of gen ed teachers curious about the special education process).   
+  
+  + We also see from the text analysis that accessibility and equity, as frequently recurring terms used by certified support staff and special education teachers, need to be a higher priority in the district given it's vision and commitment focused on "equity, engagement, and excellence for every student." "Accessibility" can refer to curriculum in the classroom or simply access to physical spaces as we see "double doors" and accessible "bathrooms" listed as priorities by staff.   
+
+# References
+Analyzing tf-idf results in scikit-learn—Datawerk. (n.d.). Retrieved May 10, 2023, from https://buhrmann.github.io/tfidf-analysis.html
+
+Scott, J. (2021, March 29). What’s in a word? Medium. https://towardsdatascience.com/whats-in-a-word-da7373a8ccb
+
+Scott, W. (2021, September 26). TF-IDF for Document Ranking from scratch in python on real world dataset. Medium. https://towardsdatascience.com/tf-idf-for-document-ranking-from-scratch-in-python-on-real-world-dataset-796d339a4089
+
+Understanding TF-IDF for Machine Learning. (n.d.). Capital One. Retrieved May 10, 2023, from https://www.capitalone.com/tech/machine-learning/understanding-tf-idf/
+
+

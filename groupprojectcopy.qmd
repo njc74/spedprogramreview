@@ -513,7 +513,7 @@ tf_idf %>%
 
 # Topic Modeling - Latent Dirichlet Allocation (LDA)
 ## Make Topics with TF-IDF Analysis
-Firstly, we set the two topics which represent negative and positive climate. TF-IDF was conducted with the whole survey data to boil down the negative and positive words by labeling with two kinds of questions: negative answers of "climate barriers" and "ineffective communications" questions, and positive answers about ”effective communications” and ”communication recommendations" questions.
+Firstly, two topics representing negative and positive climates were set. TF-IDF was conducted with all respondent survey data and negative and positive words were associated with two questions each; negative responses were associated with the "climate barriers" and "ineffective communication" questions, while positive answers were associated with ”effective communications” and ”communication recommendations" questions.
 
 ```{r, echo = FALSE,results = 'hide', fig.keep = 'all', fig.align="center", fig.height = 9, fig.width = 8}
 # make one data frame which includes all 4 survey questions
@@ -752,7 +752,8 @@ topics <- list(
 
 ```
 
-## Calcurate Probabilities
+## Calculating Probabilities
+Word probabilities across survey questions regarding climate barriers, effective commmunication, ineffective communication, and communication recommendations. 
 
 ```{r, echo = FALSE,results = 'hide', fig.keep = 'all', fig.align="center", fig.height = 9, fig.width = 8}
 set.seed(42)
@@ -903,11 +904,11 @@ recipe( ~ text, data = allquestions) %>%
 
 ## Finding the best model
 
-In the coefficients analysis, the word "lack", "barrier", and "inconsistent" have the biggest impact for predicting the negative climate in the school workplace. Regarding the predictors for positive climate, "meeting" has meanings both negative and positive, yet it is more likely to be used in the positive context from this analysis. "Improve" sounds like a good predictor of positive climate; however, it only has a relatively small impact on positive climate.
+In the coefficients analysis, the word "lack" has the biggest impact for predicting negative climate in the school workplace. Regarding predictors for positive climate, "meeting" has meanings both negative and positive, yet is more likely to be used in a positive context based on this analysis.
 
-For variable importance, "lack" is the best word in our survey data predicting negative climate. Term importance significantly decreases after "lack." "Enough" and "student" round out the top three, and are also predictors for negative climate.
+Regarding variable importance, "lack" is the best word in the survey data predicting a negative climate. Term importance significantly decreases after "lack." "Enough" and "student" round out the top three, and are also predictors of negative climate.
 
-As a whole, negative climate predictors received higher scores than predictors for positive climate. These scores indicate negative climate factors are less varied in school workplaces and could be easier to identify and eliminate than goals around creating positive climate.
+As a whole, negative climate predictors received higher scores than predictors for positive climate. These scores indicate negative climate factors could be easier to identify and eliminate than goals around creating positive climate.
 
 The Random Forest model is a better model compared to Lasso model in terms of RSME.
 

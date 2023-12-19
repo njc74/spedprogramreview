@@ -420,7 +420,7 @@ ggraph(bigram_graph, layout = "fr") +
 ```
 
 # Communication Recommendations
-## What recommendations do you have for improving communication practices in Edmonds Public Schools?
+## What recommendations do you have for improving communication practices?
 A bigram TF-IDF approach was applied to determine the most frequent, unique pairs of terms related to communication recommendations.  
 
 ```{r, echo = FALSE,results = 'hide', fig.keep = 'all', fig.align="center", fig.height = 9, fig.width = 8}
@@ -512,8 +512,8 @@ tf_idf %>%
 ```
 
 # Topic Modeling - Latent Dirichlet Allocation (LDA)
-## Make Topics with TF-IDF Analysis
-Firstly, two topics representing negative and positive climates were set. TF-IDF was conducted with all respondent survey data and negative and positive words were associated with two questions each; negative responses were associated with the "climate barriers" and "ineffective communication" questions, while positive answers were associated with ”effective communications” and ”communication recommendations" questions.
+## Generating Topics with TF-IDF Analysis
+Two topics representing generally "negative" and "positive" climates were set. TF-IDF was conducted with all respondent survey data and negative and positive responses were associated with two questions each; negative responses were associated with the "climate barriers" and "ineffective communication" questions, while positive answers were associated with ”effective communications” and ”communication recommendations" questions. All language was reviewed to ensure the model made accurate assignments. 
 
 ```{r, echo = FALSE,results = 'hide', fig.keep = 'all', fig.align="center", fig.height = 9, fig.width = 8}
 # make one data frame which includes all 4 survey questions
